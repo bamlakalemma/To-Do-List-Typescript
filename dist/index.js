@@ -1,76 +1,53 @@
-var StorageKey;
-(function (StorageKey) {
-    StorageKey["Tasks"] = "myTasks";
-    StorageKey["User"] = "userName";
-})(StorageKey || (StorageKey = {}));
-var MaterialIcon;
-(function (MaterialIcon) {
-    MaterialIcon["Edit"] = "edit";
-    MaterialIcon["Save"] = "save";
-    MaterialIcon["Delete"] = "delete";
-})(MaterialIcon || (MaterialIcon = {}));
-function getElementById(id) {
-    const element = document.getElementById(id);
-    if (!element)
-        throw new Error(`Required element with id "${id}" not found.`);
-    return element;
-}
-const newTaskInput = getElementById('newTaskInput');
-const addTaskBtn = getElementById('addTaskBtn');
-const tasksList = getElementById('tasksList');
-const welcomeTitle = getElementById('welcomeTitle');
-const changeUserBtn = getElementById('changeUserBtn');
+const newTaskInput = document.getElementById('newTaskInput');
+const addTaskBtn = document.getElementById('addTaskBtn');
+const tasksList = document.getElementById('tasksList');
+const welcomeTitle = document.getElementById('welcomeTitle');
+const changeUserBtn = document.getElementById('changeUserBtn');
 let taskCounter = 0;
 function addNewTask() {
     const taskText = newTaskInput.value.trim();
     if (!taskText) {
-        alert('Please write something first!');
+        alert("Please write something first!");
         return;
     }
     const taskId = ++taskCounter;
-    const taskItem = renderTask({ id: taskId, text: taskText });
+    const taskItem = makeNewTask(taskText, taskId);
     tasksList.appendChild(taskItem);
     newTaskInput.value = '';
-    persistTasks();
+    saveAllTasks();
 }
-function iconSpan(icon) {
-    return `<span class="material-icons">${icon}</span>`;
-}
-function renderTask(task) {
+function makeNewTask(taskText, taskId) {
     const taskItem = document.createElement('div');
     taskItem.className = 'task-item';
-    taskItem.setAttribute('data-id', String(task.id));
+    taskItem.setAttribute('data-id', taskId.toString());
     const textDiv = document.createElement('div');
     textDiv.className = 'task-text';
-    textDiv.textContent = task.text;
-    if (task.completed)
-        textDiv.classList.add('completed');
+    textDiv.textContent = taskText;
     const editInput = document.createElement('input');
     editInput.type = 'text';
     editInput.className = 'edit-input';
-    editInput.value = task.text;
+    editInput.value = taskText;
     const buttonsDiv = document.createElement('div');
     buttonsDiv.className = 'task-buttons';
     const editBtn = document.createElement('button');
     editBtn.className = 'task-btn edit-btn';
-    editBtn.innerHTML = iconSpan(MaterialIcon.Edit);
+    editBtn.innerHTML = '<span class="material-icons">edit</span>';
     editBtn.title = 'Edit';
-    editBtn.addEventListener('click', () => {
-        var _a;
+    editBtn.addEventListener('click', function () {
         if (taskItem.classList.contains('editing')) {
             const newText = editInput.value.trim();
             if (newText && newText !== textDiv.textContent) {
                 textDiv.textContent = newText;
-                persistTasks();
+                saveAllTasks();
             }
             taskItem.classList.remove('editing');
-            editBtn.innerHTML = iconSpan(MaterialIcon.Edit);
+            editBtn.innerHTML = '<span class="material-icons">edit</span>';
             editBtn.title = 'Edit';
         }
         else {
             taskItem.classList.add('editing');
-            editInput.value = (_a = textDiv.textContent) !== null && _a !== void 0 ? _a : '';
-            editBtn.innerHTML = iconSpan(MaterialIcon.Save);
+            editInput.value = textDiv.textContent || '';
+            editBtn.innerHTML = '<span class="material-icons">save</span>';
             editBtn.title = 'Save';
             setTimeout(() => {
                 editInput.focus();
@@ -80,13 +57,11 @@ function renderTask(task) {
     });
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'task-btn delete-btn';
-    deleteBtn.innerHTML = iconSpan(MaterialIcon.Delete);
+    deleteBtn.innerHTML = '<span class="material-icons">delete</span>';
     deleteBtn.title = 'Delete';
-    deleteBtn.addEventListener('click', () => {
-        if (tasksList.contains(taskItem)) {
-            tasksList.removeChild(taskItem);
-            persistTasks();
-        }
+    deleteBtn.addEventListener('click', function () {
+        tasksList.removeChild(taskItem);
+        saveAllTasks();
     });
     buttonsDiv.appendChild(editBtn);
     buttonsDiv.appendChild(deleteBtn);
@@ -96,33 +71,29 @@ function renderTask(task) {
     tasksList.appendChild(taskItem);
     return taskItem;
 }
-function persistTasks() {
+function saveAllTasks() {
     const allTasks = [];
     const taskItems = tasksList.querySelectorAll('.task-item');
-    taskItems.forEach((taskItem) => {
-        var _a;
-        const taskTextEl = taskItem.querySelector('.task-text');
+    taskItems.forEach(taskItem => {
+        const taskText = taskItem.querySelector('.task-text');
         const idAttr = taskItem.getAttribute('data-id');
-        if (!taskTextEl || !idAttr)
-            return;
-        const task = { id: Number.parseInt(idAttr, 10), text: (_a = taskTextEl.textContent) !== null && _a !== void 0 ? _a : '' };
-        allTasks.push(task);
+        if (taskText && idAttr) {
+            allTasks.push({
+                id: parseInt(idAttr),
+                text: taskText.textContent || ''
+            });
+        }
     });
-    localStorage.setItem(StorageKey.Tasks, JSON.stringify(allTasks));
+    localStorage.setItem('myTasks', JSON.stringify(allTasks));
 }
-function restoreTasks() {
-    const savedTasks = localStorage.getItem(StorageKey.Tasks);
-    if (!savedTasks)
-        return;
-    try {
+function loadSavedTasks() {
+    const savedTasks = localStorage.getItem('myTasks');
+    if (savedTasks) {
         const tasks = JSON.parse(savedTasks);
-        tasks.forEach((task) => {
-            renderTask(task);
+        tasks.forEach(task => {
+            makeNewTask(task.text, task.id);
         });
-        taskCounter = tasks.length ? Math.max(...tasks.map((t) => t.id)) : 0;
-    }
-    catch (_a) {
-        localStorage.removeItem(StorageKey.Tasks);
+        taskCounter = Math.max(...tasks.map(t => t.id), 0);
     }
 }
 function askForName() {
@@ -131,31 +102,31 @@ function askForName() {
         askForName();
     }
     else {
-        localStorage.setItem(StorageKey.User, userName);
+        localStorage.setItem("userName", userName);
         welcomeTitle.textContent = `Hello, ${userName}!`;
     }
 }
 addTaskBtn.addEventListener('click', addNewTask);
 changeUserBtn.addEventListener('click', askForName);
-newTaskInput.addEventListener('keypress', (event) => {
-    if (event.key === 'Enter')
+newTaskInput.addEventListener('keypress', function (event) {
+    if (event.key === 'Enter') {
         addNewTask();
+    }
 });
-document.addEventListener('keypress', (event) => {
-    const target = event.target;
-    if (event.key === 'Enter' && (target === null || target === void 0 ? void 0 : target.classList.contains('edit-input'))) {
-        const taskItem = target.closest('.task-item');
+document.addEventListener('keypress', function (event) {
+    if (event.key === 'Enter' && event.target.classList.contains('edit-input')) {
+        const taskItem = event.target.closest('.task-item');
         const editBtn = taskItem === null || taskItem === void 0 ? void 0 : taskItem.querySelector('.edit-btn');
         editBtn === null || editBtn === void 0 ? void 0 : editBtn.click();
     }
 });
-const savedName = localStorage.getItem(StorageKey.User);
-if (!savedName) {
+if (!localStorage.getItem("userName")) {
     askForName();
 }
 else {
+    const savedName = localStorage.getItem("userName");
     welcomeTitle.textContent = `Welcome, ${savedName}!`;
 }
-restoreTasks();
+loadSavedTasks();
 export {};
 //# sourceMappingURL=index.js.map

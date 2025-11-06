@@ -1,6 +1,5 @@
-export type Task = Readonly<{
+export type Task = {
     id: number;
     text: string;
-    completed?: boolean;
-}>;
+};
 //# sourceMappingURL=index.d.ts.map
